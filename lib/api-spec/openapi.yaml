@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: ai
+    description: AI-powered features
+  - name: Storage
+    description: Object storage upload and serving endpoints.
 paths:
   /healthz:
     get:
@@ -24,6 +28,268 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /ai/discover-companies:
+    post:
+      operationId: discoverCompanies
+      tags: [ai]
+      summary: Find nearby companies using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscoverCompaniesInput"
+      responses:
+        "200":
+          description: List of nearby companies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyDiscovery"
+
+  /ai/draft-letter:
+    post:
+      operationId: draftLetter
+      tags: [ai]
+      summary: Draft or polish an application letter using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DraftLetterInput"
+      responses:
+        "200":
+          description: Drafted letter text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftLetterResult"
+
+  /ai/research-company:
+    post:
+      operationId: researchCompany
+      tags: [ai]
+      summary: Research a company using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResearchCompanyInput"
+      responses:
+        "200":
+          description: Company research summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchCompanyResult"
+
+  /ai/star-feedback:
+    post:
+      operationId: starFeedback
+      tags: [ai]
+      summary: Get AI feedback on a STAR-format interview answer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StarFeedbackInput"
+      responses:
+        "200":
+          description: AI feedback on the STAR answer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StarFeedbackResult"
+
+  /ai/parse-profile-from-cv:
+    post:
+      operationId: parseProfileFromCv
+      summary: Parse structured profile fields from extracted CV text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseProfileFromCvRequest"
+      responses:
+        "200":
+          description: Parsed profile fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractedProfile"
+
+  /ai/profile-chat:
+    post:
+      operationId: profileChat
+      tags: [ai]
+      summary: Conversational AI profile setup assistant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileChatInput"
+      responses:
+        "200":
+          description: AI reply and optional extracted profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileChatResult"
+
+  /ai/networking-events:
+    post:
+      operationId: findNetworkingEvents
+      tags: [ai]
+      summary: Find real networking events from the internet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NetworkingEventsInput"
+      responses:
+        "200":
+          description: List of networking events found on the internet
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NetworkingEvent"
+
+  /ai/interview-questions:
+    post:
+      operationId: interviewQuestions
+      tags: [ai]
+      summary: Generate interview questions for a company and role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InterviewQuestionsInput"
+      responses:
+        "200":
+          description: Categorised interview questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterviewQuestionsResult"
+
+  /ai/interview-verdict:
+    post:
+      operationId: interviewVerdict
+      tags: [ai]
+      summary: Evaluate a completed mock interview session and return a verdict with detailed feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InterviewVerdictInput"
+      responses:
+        "200":
+          description: Interview verdict and per-answer feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterviewVerdictResult"
+
+  /storage/extract-content:
+    post:
+      tags: [Storage]
+      operationId: extractDocumentContent
+      summary: Extract career-relevant text from an uploaded document using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtractContentRequest'
+      responses:
+        '200':
+          description: Extracted text content from the document.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtractContentResult'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to extract content.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve an object entity from PRIVATE_OBJECT_DIR
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +300,471 @@ components:
       required:
         - status
 
+    ChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+        content:
+          type: string
+
+    ProfileChatInput:
+      type: object
+      required:
+        - messages
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        existingProfile:
+          $ref: "#/components/schemas/ExtractedProfile"
+        cvContent:
+          type: string
+          description: Extracted text from an uploaded CV/Resume — the AI treats this as pre-known information and skips asking about things it can already read
+
+    ParseProfileFromCvRequest:
+      type: object
+      required: [cvContent]
+      properties:
+        cvContent:
+          type: string
+          description: Raw extracted text from a CV or Resume document
+
+    ProfileField:
+      type: object
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+
+    ExtractedProfile:
+      type: object
+      properties:
+        displayName:
+          type: string
+        currentDegree:
+          type: string
+        institution:
+          type: string
+        yearOfStudy:
+          type: string
+        skills:
+          type: string
+        city:
+          type: string
+        preferredIndustries:
+          type: string
+        careerGoals:
+          type: string
+        portfolioUrl:
+          type: string
+        profileFields:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfileField"
+
+    ProfileChatResult:
+      type: object
+      required:
+        - reply
+        - isComplete
+      properties:
+        reply:
+          type: string
+        isComplete:
+          type: boolean
+        profileData:
+          $ref: "#/components/schemas/ExtractedProfile"
+
+    DiscoverCompaniesInput:
+      type: object
+      required:
+        - degree
+        - locationText
+      properties:
+        locationText:
+          type: string
+          description: Human-readable location the user wants to search in (e.g. "Lusaka", "Ndola", "Western Cape", "Nairobi")
+        latitude:
+          type: number
+        longitude:
+          type: number
+        degree:
+          type: string
+        institution:
+          type: string
+        yearOfStudy:
+          type: string
+        skills:
+          type: string
+        city:
+          type: string
+        preferredIndustries:
+          type: string
+        goals:
+          type: string
+        documentsContext:
+          type: string
+          description: Extracted text from the student's uploaded documents (CV, certificates, etc.) to enrich matching
+
+    CompanyDiscovery:
+      type: object
+      required:
+        - name
+        - description
+        - fitScore
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        fitScore:
+          type: string
+        website:
+          type: ["string", "null"]
+
+    DraftLetterInput:
+      type: object
+      required:
+        - companyName
+        - role
+        - degree
+        - goals
+      properties:
+        companyName:
+          type: string
+        role:
+          type: string
+        degree:
+          type: string
+        goals:
+          type: string
+        institution:
+          type: string
+        yearOfStudy:
+          type: string
+        skills:
+          type: string
+        portfolioUrl:
+          type: string
+        userDraft:
+          type: string
+        letterType:
+          type: string
+          description: "Type of letter: 'attachment' for industrial attachment, 'internship', 'graduate' for graduate programme, 'general' for general application"
+        studentName:
+          type: string
+        studentPhone:
+          type: string
+        studentEmail:
+          type: string
+        studentCity:
+          type: string
+        cvContent:
+          type: string
+          description: Extracted text from the student's CV/Resume to personalise the letter with real experience and achievements
+
+    DraftLetterResult:
+      type: object
+      required:
+        - letter
+      properties:
+        letter:
+          type: string
+
+    ResearchCompanyInput:
+      type: object
+      required:
+        - companyName
+      properties:
+        companyName:
+          type: string
+
+    ResearchCompanyResult:
+      type: object
+      required:
+        - summary
+      properties:
+        summary:
+          type: string
+
+    StarFeedbackInput:
+      type: object
+      required:
+        - question
+        - situation
+        - task
+        - action
+        - result
+      properties:
+        question:
+          type: string
+        situation:
+          type: string
+        task:
+          type: string
+        action:
+          type: string
+        result:
+          type: string
+
+    StarFeedbackResult:
+      type: object
+      required:
+        - feedback
+      properties:
+        feedback:
+          type: string
+
+    InterviewQuestionsInput:
+      type: object
+      required:
+        - companyName
+        - role
+        - degree
+        - goals
+      properties:
+        companyName:
+          type: string
+        role:
+          type: string
+        degree:
+          type: string
+        goals:
+          type: string
+        institution:
+          type: string
+        yearOfStudy:
+          type: string
+        skills:
+          type: string
+        researchSummary:
+          type: string
+        cvContent:
+          type: string
+          description: Extracted text from the student's CV/Resume to tailor questions to their actual experience
+
+    NetworkingEventsInput:
+      type: object
+      required:
+        - city
+      properties:
+        city:
+          type: string
+        degree:
+          type: string
+        preferredIndustries:
+          type: string
+        goals:
+          type: string
+
+    NetworkingEvent:
+      type: object
+      required:
+        - id
+        - title
+        - eventType
+        - organizer
+        - dateLabel
+        - location
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        eventType:
+          type: string
+        organizer:
+          type: string
+        dateLabel:
+          type: string
+        dateIso:
+          type: string
+        location:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        source:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        isOnline:
+          type: boolean
+
+    InterviewQuestionsResult:
+      type: object
+      required:
+        - personal
+        - company
+        - experience
+      properties:
+        personal:
+          type: array
+          items:
+            type: string
+        company:
+          type: array
+          items:
+            type: string
+        experience:
+          type: array
+          items:
+            type: string
+
+    InterviewVerdictInput:
+      type: object
+      required:
+        - companyName
+        - role
+        - degree
+        - goals
+        - questions
+        - answers
+      properties:
+        companyName:
+          type: string
+        role:
+          type: string
+        degree:
+          type: string
+        goals:
+          type: string
+        institution:
+          type: string
+        yearOfStudy:
+          type: string
+        skills:
+          type: string
+        city:
+          type: string
+        questions:
+          type: array
+          items:
+            type: string
+        answers:
+          type: array
+          items:
+            type: string
+        researchSummary:
+          type: string
+        cvContent:
+          type: string
+          description: Extracted text from the student's CV/Resume to evaluate answers against claimed experience
+
+    AnswerFeedback:
+      type: object
+      required:
+        - question
+        - answer
+        - feedback
+        - score
+      properties:
+        question:
+          type: string
+        answer:
+          type: string
+        feedback:
+          type: string
+        score:
+          type: number
+
+    InterviewVerdictResult:
+      type: object
+      required:
+        - verdict
+        - overallScore
+        - overallFeedback
+        - strengths
+        - areasToImprove
+        - answerFeedback
+        - recommendation
+      properties:
+        verdict:
+          type: string
+          description: "accepted | shortlisted | rejected"
+        overallScore:
+          type: number
+        overallFeedback:
+          type: string
+        strengths:
+          type: array
+          items:
+            type: string
+        areasToImprove:
+          type: array
+          items:
+            type: string
+        answerFeedback:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnswerFeedback"
+        recommendation:
+          type: string
+
+    ExtractContentRequest:
+      type: object
+      required: [objectPath, contentType, category]
+      properties:
+        objectPath:
+          type: string
+          description: Normalized object path (e.g. /objects/uploads/uuid)
+        contentType:
+          type: string
+          description: MIME type of the file
+        category:
+          type: string
+          description: Document category (e.g. CV / Resume, Certificate)
+
+    ExtractContentResult:
+      type: object
+      required: [extractedText]
+      properties:
+        extractedText:
+          type: string
+          description: Career-relevant text extracted from the document
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Original file name.
+        size:
+          type: integer
+          minimum: 1
+          description: File size in bytes.
+        contentType:
+          type: string
+          minLength: 1
+          description: MIME type of the file.
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+          description: Presigned GCS URL for PUT upload.
+        objectPath:
+          type: string
+          description: Normalized object path (e.g. /objects/uploads/uuid).
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
