@@ -3,6 +3,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -50,6 +51,8 @@ const CATEGORY_COLORS: Record<DocCategory, { bg: string; icon: string; border: s
   'Other': { bg: 'rgba(255,255,255,0.08)', icon: 'rgba(255,255,255,0.6)', border: 'rgba(255,255,255,0.15)' },
 };
 
+const DOCS_DIR = `${FileSystem.documentDirectory}career-compass-docs/`;
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -58,6 +61,13 @@ function formatFileSize(bytes: number): string {
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+async function ensureDocsDir() {
+  const info = await FileSystem.getInfoAsync(DOCS_DIR);
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(DOCS_DIR, { intermediates: true });
+  }
 }
 
 export default function DocsScreen() {
@@ -89,7 +99,7 @@ export default function DocsScreen() {
       const asset = result.assets[0];
       setPendingFile(asset);
       setShowCategoryPicker(true);
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'Failed to pick file. Please try again.');
     }
   };
@@ -102,133 +112,127 @@ export default function DocsScreen() {
 
     try {
       const asset = pendingFile;
-      const apiBase = getApiBase();
 
-      const urlRes = await fetch(`${apiBase}/api/storage/uploads/request-url`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: asset.name,
-          size: asset.size ?? 0,
-          contentType: asset.mimeType ?? 'application/octet-stream',
-        }),
-      });
+      await ensureDocsDir();
 
-      if (!urlRes.ok) {
-        const err = await urlRes.json().catch(() => ({}));
-        throw new Error((err as any).error ?? 'Failed to get upload URL');
-      }
+      const ext = asset.name.split('.').pop()?.toLowerCase() || 'bin';
+      const uniqueName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const localUri = `${DOCS_DIR}${uniqueName}`;
 
-      const { uploadURL, objectPath } = await urlRes.json();
-
-      const base64 = await FileSystem.readAsStringAsync(asset.uri, {
-        encoding: 'base64',
-      });
-      const dataUri = `data:${asset.mimeType ?? 'application/octet-stream'};base64,${base64}`;
-      const blob = await fetch(dataUri).then(r => r.blob());
-
-      const putRes = await fetch(uploadURL, {
-        method: 'PUT',
-        headers: { 'Content-Type': asset.mimeType ?? 'application/octet-stream' },
-        body: blob,
-      });
-
-      if (!putRes.ok) {
-        throw new Error(`Upload failed with status ${putRes.status}`);
-      }
+      await FileSystem.copyAsync({ from: asset.uri, to: localUri });
 
       const stored = await addDoc({
         name: asset.name,
         category,
-        objectPath,
+        objectPath: localUri,
         contentType: asset.mimeType ?? 'application/octet-stream',
         size: asset.size ?? 0,
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Uploaded!', `"${asset.name}" saved to your document library.`);
+      Alert.alert('Saved!', `"${asset.name}" added to your document library.`);
 
-      fetch(`${apiBase}/api/storage/extract-content`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          objectPath,
-          contentType: asset.mimeType ?? 'application/octet-stream',
-          category,
-        }),
-      })
-        .then(r => r.ok ? r.json() : null)
-        .then(async data => {
-          if (!data?.extractedText) return;
-          await updateDoc(stored.id, { extractedText: data.extractedText });
+      const apiBase = getApiBase();
+      if (apiBase) {
+        FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 })
+          .then(async base64 => {
+            const res = await fetch(`${apiBase}/api/storage/extract-content`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fileContent: base64,
+                contentType: asset.mimeType ?? 'application/octet-stream',
+                category,
+              }),
+            });
+            if (!res.ok) return null;
+            return res.json();
+          })
+          .then(async data => {
+            if (!data?.extractedText) return;
+            await updateDoc(stored.id, { extractedText: data.extractedText });
 
-          if (category === 'CV / Resume' && profile) {
-            try {
-              const parseRes = await fetch(`${apiBase}/api/ai/parse-profile-from-cv`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cvContent: data.extractedText }),
-              });
-              if (!parseRes.ok) return;
-              const parsed = await parseRes.json();
+            if (category === 'CV / Resume' && profile) {
+              try {
+                const parseRes = await fetch(`${apiBase}/api/ai/parse-profile-from-cv`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ cvContent: data.extractedText }),
+                });
+                if (!parseRes.ok) return;
+                const parsed = await parseRes.json();
 
-              const mergedFields: Array<{ id: string; label: string; value: string }> = [
-                ...(profile.profileFields ?? []),
-              ];
-              const existingLabels = new Set(mergedFields.map(f => f.label.toLowerCase()));
-              for (const pf of (parsed.profileFields ?? [])) {
-                if (pf.label?.trim() && pf.value?.trim() && !existingLabels.has(pf.label.toLowerCase())) {
-                  mergedFields.push({ id: `cv_${Date.now()}_${mergedFields.length}`, label: pf.label.trim(), value: pf.value.trim() });
+                const mergedFields = [...(profile.profileFields ?? [])];
+                const existingLabels = new Set(mergedFields.map(f => f.label.toLowerCase()));
+                for (const pf of (parsed.profileFields ?? [])) {
+                  if (pf.label?.trim() && pf.value?.trim() && !existingLabels.has(pf.label.toLowerCase())) {
+                    mergedFields.push({ id: `cv_${Date.now()}_${mergedFields.length}`, label: pf.label.trim(), value: pf.value.trim() });
+                  }
                 }
-              }
 
-              await updateProfile({
-                ...profile,
-                displayName: parsed.displayName || profile.displayName,
-                currentDegree: parsed.currentDegree || profile.currentDegree,
-                institution: parsed.institution || profile.institution,
-                yearOfStudy: parsed.yearOfStudy || profile.yearOfStudy,
-                skills: parsed.skills || profile.skills,
-                city: parsed.city || profile.city,
-                preferredIndustries: parsed.preferredIndustries || profile.preferredIndustries,
-                careerGoals: parsed.careerGoals || profile.careerGoals,
-                portfolioUrl: parsed.portfolioUrl || profile.portfolioUrl,
-                profileFields: mergedFields,
-              });
+                await updateProfile({
+                  ...profile,
+                  displayName: parsed.displayName || profile.displayName,
+                  currentDegree: parsed.currentDegree || profile.currentDegree,
+                  institution: parsed.institution || profile.institution,
+                  yearOfStudy: parsed.yearOfStudy || profile.yearOfStudy,
+                  skills: parsed.skills || profile.skills,
+                  city: parsed.city || profile.city,
+                  preferredIndustries: parsed.preferredIndustries || profile.preferredIndustries,
+                  careerGoals: parsed.careerGoals || profile.careerGoals,
+                  portfolioUrl: parsed.portfolioUrl || profile.portfolioUrl,
+                  profileFields: mergedFields,
+                });
 
-              const filled = [
-                parsed.displayName && 'Name',
-                parsed.currentDegree && 'Degree',
-                parsed.institution && 'Institution',
-                parsed.skills && 'Skills',
-                parsed.city && 'City',
-                parsed.careerGoals && 'Career goals',
-              ].filter(Boolean);
-              if (filled.length > 0) {
-                Alert.alert(
-                  'Profile auto-filled from CV',
-                  `Your profile was updated with: ${filled.join(', ')}. The AI assistant will now use your CV and won\'t ask you things it can already read.`,
-                );
-              }
-            } catch {
+                const filled = [
+                  parsed.displayName && 'Name',
+                  parsed.currentDegree && 'Degree',
+                  parsed.institution && 'Institution',
+                  parsed.skills && 'Skills',
+                  parsed.city && 'City',
+                  parsed.careerGoals && 'Career goals',
+                ].filter(Boolean);
+                if (filled.length > 0) {
+                  Alert.alert(
+                    'Profile auto-filled from CV',
+                    `Your profile was updated with: ${filled.join(', ')}.`,
+                  );
+                }
+              } catch {}
             }
-          }
-        })
-        .catch(() => {});
+          })
+          .catch(() => {});
+      }
     } catch (err: any) {
-      Alert.alert('Upload Failed', err?.message ?? 'Something went wrong. Please try again.');
+      Alert.alert('Save Failed', err?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setUploading(false);
       setPendingFile(null);
     }
   };
 
-  const handleOpen = (doc: StoredDocument) => {
+  const handleOpen = async (doc: StoredDocument) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== 'web' && doc.objectPath.startsWith('file://')) {
+      try {
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(doc.objectPath, {
+            mimeType: doc.contentType,
+            dialogTitle: `Open ${doc.name}`,
+          });
+        } else {
+          Alert.alert('Cannot open', 'No app available to open this file type.');
+        }
+      } catch {
+        Alert.alert('Error', 'Could not open this document.');
+      }
+      return;
+    }
     router.push(`/doc-viewer?docId=${encodeURIComponent(doc.id)}`);
   };
 
-  const handleDelete = (doc: StoredDocument) => {
+  const handleDelete = async (doc: StoredDocument) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Remove document',
@@ -238,8 +242,11 @@ export default function DocsScreen() {
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             deleteDoc(doc.id);
+            if (doc.objectPath.startsWith('file://')) {
+              try { await FileSystem.deleteAsync(doc.objectPath, { idempotent: true }); } catch {}
+            }
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           },
         },
@@ -347,7 +354,6 @@ export default function DocsScreen() {
         contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: bottomPad + 24 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={s.header}>
           <Pressable onPress={() => router.back()} style={s.backBtn}>
             <Feather name="arrow-left" size={18} color={colors.text} />
@@ -363,11 +369,10 @@ export default function DocsScreen() {
             ) : (
               <Feather name="upload" size={14} color="#fff" />
             )}
-            <Text style={s.uploadBtnText}>{uploading ? 'Uploading…' : 'Upload'}</Text>
+            <Text style={s.uploadBtnText}>{uploading ? 'Saving…' : 'Upload'}</Text>
           </Pressable>
         </View>
 
-        {/* Stats */}
         <View style={s.statsRow}>
           <View style={s.statChip}>
             <Text style={s.statVal}>{docs.length}</Text>
@@ -381,7 +386,6 @@ export default function DocsScreen() {
           ))}
         </View>
 
-        {/* Filter chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterScroll}>
           {(['All', ...CATEGORIES] as const).map(cat => {
             const active = filter === cat;
@@ -402,7 +406,6 @@ export default function DocsScreen() {
           })}
         </ScrollView>
 
-        {/* Upload hint */}
         {uploading && (
           <View style={{
             marginHorizontal: 16, marginBottom: 12, padding: 14,
@@ -413,7 +416,7 @@ export default function DocsScreen() {
             <ActivityIndicator size="small" color={colors.primary} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.text }}>
-                Uploading {pendingFile?.name ?? 'file'}…
+                Saving {pendingFile?.name ?? 'file'}…
               </Text>
               <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.textMuted, marginTop: 2 }}>
                 Category: {uploadingCategory}
@@ -422,7 +425,6 @@ export default function DocsScreen() {
           </View>
         )}
 
-        {/* Document list */}
         {filteredDocs.length === 0 ? (
           <View style={s.emptyState}>
             <View style={s.emptyIcon}>
@@ -450,6 +452,11 @@ export default function DocsScreen() {
                   <Text style={s.docMeta}>
                     {doc.category} · {formatFileSize(doc.size)} · {formatDate(doc.uploadedAt)}
                   </Text>
+                  {doc.extractedText && (
+                    <Text style={[s.docMeta, { color: colors.success, marginTop: 2 }]}>
+                      ✓ AI-indexed
+                    </Text>
+                  )}
                 </View>
                 <View style={s.docActions}>
                   <Pressable
@@ -459,8 +466,9 @@ export default function DocsScreen() {
                       { backgroundColor: colors.indigoBg, borderWidth: 1, borderColor: colors.indigoBorder },
                       pressed && { opacity: 0.7 },
                     ]}
+                    accessibilityLabel="Open document"
                   >
-                    <Feather name="eye" size={15} color={colors.primary} />
+                    <Feather name="external-link" size={15} color={colors.primary} />
                   </Pressable>
                   <Pressable
                     onPress={() => handleDelete(doc)}
@@ -469,6 +477,7 @@ export default function DocsScreen() {
                       { backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: colors.dangerBorder },
                       pressed && { opacity: 0.7 },
                     ]}
+                    accessibilityLabel="Remove document"
                   >
                     <Feather name="trash-2" size={15} color={colors.danger} />
                   </Pressable>
@@ -479,7 +488,6 @@ export default function DocsScreen() {
         )}
       </ScrollView>
 
-      {/* Category picker modal */}
       {showCategoryPicker && (
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
           <Pressable style={{ flex: 1 }} onPress={() => { setShowCategoryPicker(false); setPendingFile(null); }} />

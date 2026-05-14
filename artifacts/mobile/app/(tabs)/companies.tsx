@@ -371,6 +371,16 @@ export default function CompaniesScreen() {
                       {tracked ? 'Tracked' : 'Track'}
                     </Text>
                   </Pressable>
+                  <Pressable
+                    style={s.detailsBtn}
+                    onPress={() => router.push(`/company-detail?data=${encodeURIComponent(JSON.stringify(company))}` as any)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`View full details for ${company.name}`}
+                    android_ripple={{ color: colors.muted }}
+                  >
+                    <Feather name="chevron-right" size={14} color={colors.textSecondary} />
+                    <Text style={s.detailsBtnText}>Details</Text>
+                  </Pressable>
                 </View>
               </View>
             );
@@ -438,4 +448,11 @@ const styles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   emptyIconBg: { width: 72, height: 72, borderRadius: 20, backgroundColor: colors.indigoBg, borderWidth: 1, borderColor: colors.indigoBorder, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   emptyTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', color: colors.text },
   emptySubtitle: { fontSize: 14, fontFamily: 'Inter_400Regular', color: colors.textMuted, textAlign: 'center', lineHeight: 22, maxWidth: 300 },
+  detailsBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 12, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.muted,
+  },
+  detailsBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.textSecondary },
 });

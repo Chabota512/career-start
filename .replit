@@ -30,3 +30,12 @@ externalPort = 80
 [[ports]]
 localPort = 18115
 externalPort = 3000
+
+[userenv]
+
+[userenv.shared]
+GEMINI_API_KEY = "AIzaSyCO4x0FXrRj-63mHklaJv27ENzl7zJ6aVg"
+EVENTBRITE_API_KEY = "4TSTBZXWN4AIZMQZF3"
+SERPER_API_KEY = "795b6cbf13c56de35ff310ad7f0f4798474bfc11"
+TAVILY_API_KEY = "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"
+GOOGLE_SEARCH_API_KEY = "fbb18cefab7deb00e190e63016341b07e83a7e13e897f3856d317b1e9c9234d7"

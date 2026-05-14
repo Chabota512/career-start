@@ -22,6 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp, Contact } from '@/context/AppContext';
 import { useColors } from '@/hooks/useColors';
 import { getApiBase } from '@/constants/config';
+import { requestNotificationPermissions, scheduleLocalNotification } from '@/utils/notifications';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -184,8 +185,16 @@ export default function NetworkScreen() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to load events');
-      setAllEvents(Array.isArray(data) ? data : []);
+      const events: NetworkingEvent[] = Array.isArray(data) ? data : [];
+      setAllEvents(events);
       AsyncStorage.setItem(LAST_EVENTS_FETCH_KEY, String(Date.now())).catch(() => {});
+      if (events.length > 0 && Platform.OS !== 'web') {
+        scheduleLocalNotification({
+          title: '🗓️ Networking Events Found',
+          body: `${events.length} event${events.length === 1 ? '' : 's'} near you — tap to explore.`,
+          data: { screen: 'contacts' },
+        }).catch(() => {});
+      }
     } catch (err: any) {
       setFetchError(err.message || 'Could not load networking events');
     } finally {
@@ -196,6 +205,7 @@ export default function NetworkScreen() {
 
   const didAutoFetch = useRef(false);
   useEffect(() => {
+    if (Platform.OS !== 'web') requestNotificationPermissions().catch(() => {});
     if (didAutoFetch.current) return;
     didAutoFetch.current = true;
     AsyncStorage.getItem(LAST_EVENTS_FETCH_KEY)

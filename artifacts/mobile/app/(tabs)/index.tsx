@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import {
@@ -402,7 +403,15 @@ export default function DashboardScreen() {
           accessibilityRole="button"
           android_ripple={{ color: colors.muted, borderless: true, radius: 22 }}
         >
-          <Text style={s.avatarText}>{profile?.displayName?.[0]?.toUpperCase() || 'Y'}</Text>
+          {profile?.profileImageUri ? (
+            <Image
+              source={{ uri: profile.profileImageUri }}
+              style={{ width: 44, height: 44, borderRadius: 22 }}
+              contentFit="cover"
+            />
+          ) : (
+            <Text style={s.avatarText}>{profile?.displayName?.[0]?.toUpperCase() || 'Y'}</Text>
+          )}
         </Pressable>
       </View>
 
