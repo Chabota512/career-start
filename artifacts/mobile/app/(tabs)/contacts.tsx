@@ -390,7 +390,7 @@ export default function NetworkScreen() {
                 accessibilityRole="link"
               >
                 <Text style={s.openBtnText}>Open</Text>
-                <Feather name="external-link" size={12} color={colors.primary} />
+                <Feather name="external-link" size={12} color="#fff" />
               </Pressable>
             )}
           </View>
@@ -417,7 +417,7 @@ export default function NetworkScreen() {
           accessibilityLabel="Refresh network events"
           accessibilityRole="button"
         >
-          <Feather name="refresh-cw" size={20} color={(isLoading || isRefreshing) ? colors.textMuted : colors.primary} />
+          <Feather name="refresh-cw" size={20} color={(isLoading || isRefreshing) ? 'rgba(255,255,255,0.4)' : '#fff'} />
         </Pressable>
         <Pressable
           onPress={() => setShowContactsModal(true)}
@@ -426,7 +426,7 @@ export default function NetworkScreen() {
           accessibilityRole="button"
           android_ripple={{ color: colors.indigoBg, borderless: true, radius: 26 }}
         >
-          <Feather name="users" size={22} color={colors.primary} />
+          <Feather name="users" size={22} color="#fff" />
           {followUpCount > 0 && (
             <View style={s.contactsBadge}>
               <Text style={s.contactsBadgeText}>{followUpCount > 9 ? '9+' : followUpCount}</Text>
@@ -503,7 +503,7 @@ export default function NetworkScreen() {
             <Text style={s.emptyTitle}>Could not load events</Text>
             <Text style={s.emptySubtitle}>{fetchError}</Text>
             <Pressable style={s.retryBtn} onPress={() => fetchEvents()} accessibilityRole="button">
-              <Feather name="refresh-cw" size={14} color={colors.primary} />
+              <Feather name="refresh-cw" size={14} color="#fff" />
               <Text style={s.retryBtnText}>Try again</Text>
             </Pressable>
           </View>
@@ -523,7 +523,7 @@ export default function NetworkScreen() {
                   : 'Add your city in your profile to get local results.'}
             </Text>
             <Pressable style={s.retryBtn} onPress={() => fetchEvents()} accessibilityRole="button">
-              <Feather name="refresh-cw" size={14} color={colors.primary} />
+              <Feather name="refresh-cw" size={14} color="#fff" />
               <Text style={s.retryBtnText}>Search again</Text>
             </Pressable>
           </View>

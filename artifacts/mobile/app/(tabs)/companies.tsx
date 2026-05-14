@@ -223,8 +223,8 @@ export default function CompaniesScreen() {
             accessibilityLabel="Detect my location"
           >
             {gpsLoading
-              ? <ActivityIndicator size="small" color={colors.primary} />
-              : <Feather name="map-pin" size={16} color={colors.primary} />}
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Feather name="map-pin" size={16} color="#fff" />}
             {!gpsLoading && <Text style={s.gpsBtnLabel}>Locate</Text>}
           </Pressable>
         </View>
@@ -365,7 +365,7 @@ export default function CompaniesScreen() {
                     <Feather
                       name={tracked ? 'check' : 'plus'}
                       size={14}
-                      color={tracked ? colors.success : colors.primary}
+                      color={tracked ? colors.success : '#fff'}
                     />
                     <Text style={[s.trackBtnText, tracked && { color: colors.success }]}>
                       {tracked ? 'Tracked' : 'Track'}

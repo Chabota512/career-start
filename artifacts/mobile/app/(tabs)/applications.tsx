@@ -437,7 +437,7 @@ export default function ApplicationsScreen() {
                   accessibilityLabel="Add first application"
                   android_ripple={{ color: colors.indigoBg }}
                 >
-                  <Feather name="plus" size={15} color={colors.primary} />
+                  <Feather name="plus" size={15} color="#fff" />
                   <Text style={s.emptyBtnText}>Add your first one</Text>
                 </Pressable>
               </>
