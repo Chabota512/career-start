@@ -48,6 +48,7 @@ jobs:
 
       - name: Build Android APK
         run: |
+          # Ensure JSON output is parsed correctly whether EAS returns an object or array
           pnpm exec eas build --platform android --profile ${{ github.event.inputs.profile || 'preview' }} --non-interactive --json > eas-build.json
           BUILD_ID=$(jq -r 'if type == "array" then .[0].id else .id end' eas-build.json)
           echo "EAS build ID: $BUILD_ID"
