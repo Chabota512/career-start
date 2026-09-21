@@ -1,0 +1,1 @@
+- [Career Start browser adapter](career-start-browser-adapter.md) — the web experience is local-first and keeps interview practice usable without external credentials.

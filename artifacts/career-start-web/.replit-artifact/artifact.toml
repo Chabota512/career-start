@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Career Start"
+description = "A functional career guidance website based on the existing Career Start project, helping learners explore career paths, discover opportunities, and take their next steps."
+version = "1.0.0"
+id = "artifacts/career-start-web"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22819
+
+[services.development]
+run = "pnpm --filter @workspace/career-start-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/career-start-web", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/career-start-web/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22819"
+BASE_PATH = "/"
